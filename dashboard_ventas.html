@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard de Ventas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f0f11;
+    --bg2: #18181c;
+    --bg3: #1f1f25;
+    --border: #2a2a32;
+    --border2: #333340;
+    --text: #f0f0f4;
+    --text2: #8888a0;
+    --text3: #555568;
+    --accent: #6c63ff;
+    --accent2: #4ade80;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --meet: #fb923c;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* SIDEBAR */
+  .layout { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 220px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 28px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+  }
+
+  .sidebar-logo {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0 8px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 400;
+    color: var(--text2);
+    transition: all 0.15s;
+    border: 1px solid transparent;
+    position: relative;
+  }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: var(--bg3); color: var(--text); border-color: var(--border2); font-weight: 500; }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-badge {
+    margin-left: auto;
+    background: var(--danger);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .sidebar-section {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 16px 10px 6px;
+  }
+
+  /* MAIN */
+  .main {
+    margin-left: 220px;
+    flex: 1;
+    padding: 32px 36px;
+    max-width: 1100px;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* TOPBAR */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .page-title { font-size: 22px; font-weight: 600; color: var(--text); }
+  .page-sub { font-size: 13px; color: var(--text2); margin-top: 3px; }
+
+  /* STATUS BAR */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 13px;
+  }
+  .status-bar input {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    padding: 7px 12px;
+  }
+  .status-bar input::placeholder { color: var(--text3); }
+  .status-bar input:focus { outline: none; border-color: var(--accent); }
+  .btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 8px 16px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-ghost {
+    background: var(--bg3);
+    color: var(--text2);
+    border: 1px solid var(--border2);
+  }
+  .chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dot-ok { background: var(--accent2); }
+  .dot-warn { background: var(--warn); }
+  .dot-err { background: var(--danger); }
+
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .metric-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    transition: border-color 0.2s;
+  }
+  .metric-card:hover { border-color: var(--border2); }
+  .metric-label { font-size: 11px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .metric-value { font-size: 30px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; line-height: 1; }
+  .metric-sub { font-size: 12px; color: var(--text2); margin-top: 6px; }
+  .metric-ok { color: var(--accent2); }
+  .metric-warn { color: var(--warn); }
+  .metric-bad { color: var(--danger); }
+
+  /* GOAL BAR */
+  .goal-section { margin-bottom: 24px; }
+  .goal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: var(--text2); }
+  .goal-nums { font-family: 'DM Mono', monospace; font-size: 14px; color: var(--text); }
+  .goal-bar-bg { height: 8px; background: var(--bg3); border-radius: 20px; overflow: hidden; }
+  .goal-bar-fill { height: 100%; border-radius: 20px; transition: width 0.5s ease; }
+
+  /* DATE NAV */
+  .date-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .date-nav-btn {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 15px;
+    transition: all 0.15s;
+  }
+  .date-nav-btn:hover { background: var(--bg3); color: var(--text); }
+  .date-label {
+    flex: 1;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .today-btn {
+    font-size: 12px;
+    padding: 6px 12px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .today-btn:hover { background: var(--bg3); color: var(--text); }
+
+  /* TABLE */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    padding: 10px 20px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 12px 20px;
+    font-size: 13px;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg3); }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .badge-msg { background: rgba(108,99,255,0.15); color: #a89cff; }
+  .badge-call { background: rgba(74,222,128,0.12); color: #4ade80; }
+  .badge-meet { background: rgba(251,146,60,0.15); color: #fb923c; }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px;
+    color: var(--text3);
+    font-size: 14px;
+  }
+  .empty-icon { font-size: 32px; margin-bottom: 10px; }
+
+  /* ALERTS */
+  .alert-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .alert-item:last-child { border-bottom: none; }
+  .alert-item:hover { background: var(--bg3); }
+  .alert-icon { font-size: 14px; margin-top: 2px; flex-shrink: 0; }
+  .alert-body { flex: 1; min-width: 0; }
+  .alert-title { font-size: 13.5px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .alert-sub { font-size: 12px; color: var(--text2); }
+  .alert-tag {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    padding: 3px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .tag-urgent { background: rgba(248,113,113,0.15); color: var(--danger); }
+  .tag-warn { background: rgba(251,191,36,0.15); color: var(--warn); }
+
+  /* FILTER PILLS */
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .pill {
+    font-size: 12px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .pill:hover { background: var(--bg3); color: var(--text); }
+  .pill.active { background: var(--bg3); color: var(--text); border-color: var(--border2); font-weight: 500; }
+
+  /* REUNIONES */
+  .reunion-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .reunion-item:last-child { border-bottom: none; }
+  .reunion-item:hover { background: var(--bg3); }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: rgba(108,99,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; color: #a89cff;
+    flex-shrink: 0;
+  }
+  .reunion-info { flex: 1; min-width: 0; }
+  .reunion-name { font-size: 13.5px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .reunion-detail { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  /* CHART */
+  .chart-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+  .chart-title { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 16px; }
+
+  /* SPINNER */
+  .spinner {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* COL INFO */
+  .col-info {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    margin-bottom: 16px;
+    display: none;
+    word-break: break-all;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 700px) {
+    .sidebar { width: 60px; padding: 20px 8px; }
+    .sidebar-logo, .nav-item span, .sidebar-section { display: none; }
+    .main { margin-left: 60px; padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">Ventas CRM</div>
+    <div class="nav-item active" onclick="showPage('hoy',this)">
+      <span class="icon">📅</span><span>Hoy</span>
+    </div>
+    <div class="nav-item" onclick="showPage('alertas',this)">
+      <span class="icon">🔔</span><span>Alertas</span>
+      <span class="nav-badge" id="navBadge" style="display:none"></span>
+    </div>
+    <div class="nav-item" onclick="showPage('semana',this)">
+      <span class="icon">📈</span><span>Semana</span>
+    </div>
+    <div class="nav-item" onclick="showPage('reuniones',this)">
+      <span class="icon">🤝</span><span>Reuniones</span>
+    </div>
+    <div style="margin-top:auto;">
+      <div class="sidebar-section">Config</div>
+      <div class="nav-item" onclick="showPage('config',this)">
+        <span class="icon">⚙️</span><span>Conectar Sheet</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- HOY -->
+    <div class="page active" id="pageHoy">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Actividad del día</div>
+          <div class="page-sub">Meta: 25 actividades · Seguimientos y reuniones</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="date-nav-btn" onclick="changeDay(-1)">‹</button>
+          <span class="date-label" id="dateLabel" style="min-width:200px;text-align:center;font-size:14px;display:flex;align-items:center;justify-content:center;"></span>
+          <button class="date-nav-btn" onclick="changeDay(1)">›</button>
+          <button class="today-btn" onclick="goToday()">Hoy</button>
+        </div>
+      </div>
+      <div class="col-info" id="colInfo"></div>
+      <div class="goal-section">
+        <div class="goal-header">
+          <span>Progreso hacia la meta</span>
+          <span class="goal-nums" id="goalNums"></span>
+        </div>
+        <div class="goal-bar-bg"><div class="goal-bar-fill" id="goalBar"></div></div>
+      </div>
+      <div class="metrics" id="dayMetrics"></div>
+      <div class="card">
+        <div class="card-header">Actividades por contacto</div>
+        <table><thead><tr><th>Empresa / Contacto</th><th>Cargo</th><th>Actividad</th><th>Etapa</th></tr></thead>
+        <tbody id="dayTable"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ALERTAS -->
+    <div class="page" id="pageAlertas">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Seguimientos pendientes</div>
+          <div class="page-sub">Contactos sin reunión agendada que superaron la ventana de tiempo</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span id="urgentCount" style="font-size:12px;font-weight:600;background:rgba(248,113,113,0.15);color:var(--danger);padding:4px 12px;border-radius:20px;"></span>
+          <span id="warnCount" style="font-size:12px;font-weight:600;background:rgba(251,191,36,0.15);color:var(--warn);padding:4px 12px;border-radius:20px;"></span>
+        </div>
+      </div>
+      <div class="filter-row">
+        <button class="pill active" onclick="setAlertFilter('all',this)">Todos</button>
+        <button class="pill" onclick="setAlertFilter('urgent',this)">🔴 Vencidos</button>
+        <button class="pill" onclick="setAlertFilter('warning',this)">🟡 Vencen hoy</button>
+      </div>
+      <div class="card"><div id="alertList"></div></div>
+    </div>
+
+    <!-- SEMANA -->
+    <div class="page" id="pageSemana">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Resumen semanal</div>
+          <div class="page-sub">Últimos 7 días vs meta de 25 actividades/día</div>
+        </div>
+      </div>
+      <div class="metrics" id="weekMetrics"></div>
+      <div class="chart-card">
+        <div class="chart-title">Actividades diarias</div>
+        <div style="position:relative;height:260px;"><canvas id="weekChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- REUNIONES -->
+    <div class="page" id="pageReuniones">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Reuniones agendadas</div>
+          <div class="page-sub" id="reunionSub"></div>
+        </div>
+      </div>
+      <div class="card"><div id="reunionList"></div></div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="page" id="pageConfig">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Conectar Google Sheet</div>
+          <div class="page-sub">Pega la URL de tu Apps Script para cargar los datos</div>
+        </div>
+      </div>
+      <div class="card" style="padding:28px;">
+        <div style="margin-bottom:20px;">
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.07em;">URL del Apps Script</label>
+          <input type="text" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:'DM Mono',monospace;padding:10px 14px;">
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button class="btn" onclick="connectScript()">Conectar</button>
+          <span class="chip" id="configStatus"></span>
+        </div>
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
+          <p style="font-size:12px;color:var(--text2);line-height:1.7;">
+            <strong style="color:var(--text);">Código necesario en tu Apps Script:</strong><br>
+            El script debe soportar el parámetro <code style="color:var(--accent);">?callback=</code> para JSONP.<br>
+            Asegúrate de haber hecho una nueva implementación con acceso <strong>Cualquier persona</strong>.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const META = 25;
+// CAMBIA ESTA URL por tu Apps Script URL
+let SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxtcV14-QKLxDANuSdLlNF0VBU5lzE44rlJk6moybddfeXnXvh1p8ZydxcZMTo6t_Vh/exec';
+
+const ACT_COLS = ['MENSAJE 1','MENSAJE 2','1ERA LLAMADA','MENSAJE 3','LLAMADA 2','MENSAJE 4','LLAMADA 3','MENSAJE 5','Reunion Agendada'];
+const COL_TYPE = {'MENSAJE 1':'msg','MENSAJE 2':'msg','MENSAJE 3':'msg','MENSAJE 4':'msg','MENSAJE 5':'msg','1ERA LLAMADA':'call','LLAMADA 2':'call','LLAMADA 3':'call','Reunion Agendada':'meet'};
+const TYPE_LABEL = {msg:'Mensaje',call:'Llamada',meet:'Reunión agendada'};
+const TYPE_BADGE = {msg:'badge-msg',call:'badge-call',meet:'badge-meet'};
+const SEQUENCE_RULES = [
+  {from:'MENSAJE 1',    to:'MENSAJE 2',    maxDays:3, label:'MSG 1 → MSG 2'},
+  {from:'MENSAJE 2',    to:'1ERA LLAMADA', maxDays:1, label:'MSG 2 → Llamada 1'},
+  {from:'1ERA LLAMADA', to:'MENSAJE 3',    maxDays:4, label:'Llamada 1 → MSG 3'},
+  {from:'MENSAJE 3',    to:'LLAMADA 2',    maxDays:1, label:'MSG 3 → Llamada 2'},
+  {from:'LLAMADA 2',    to:'MENSAJE 4',    maxDays:4, label:'Llamada 2 → MSG 4'},
+  {from:'MENSAJE 4',    to:'LLAMADA 3',    maxDays:1, label:'MSG 4 → Llamada 3'},
+  {from:'LLAMADA 3',    to:'MENSAJE 5',    maxDays:5, label:'Llamada 3 → MSG 5'},
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let data = [], colMap = {};
+let selectedDate = new Date(); selectedDate.setHours(0,0,0,0);
+let weekChart = null, alertFilter = 'all', currentPage = 'hoy';
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function norm(s){ return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
+
+function buildColMap(row){
+  const keys = Object.keys(row);
+  const expected = [...ACT_COLS,'EMPRESA','CONTACTO','CARGO','E-MAIL','TELEFONO','CELULAR','STATUS','LINKEDIN'];
+  const map = {};
+  for(const exp of expected){ map[exp] = keys.find(k=>norm(k)===norm(exp))||null; }
+  return map;
+}
+
+function gc(row, col){
+  const r = colMap[col]; if(!r) return '';
+  const v = row[r]; if(v===null||v===undefined) return '';
+  return String(v).trim();
+}
+
+function parseDate(val){
+  if(!val||String(val).trim()==='') return null;
+  const s = String(val).trim();
+  let m;
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m){ const a=+m[1],b=+m[2],y=+m[3]; const d=a>12?new Date(y,b-1,a):new Date(y,a-1,b); if(!isNaN(d.getTime())){d.setHours(0,0,0,0);return d;} }
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m){ const d=new Date(+m[1],+m[2]-1,+m[3]);d.setHours(0,0,0,0);return d; }
+  m = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if(m){ const d=new Date(+m[3],+m[2]-1,+m[1]);d.setHours(0,0,0,0);return d; }
+  if(/^\d+(\.\d+)?$/.test(s)){ const n=parseFloat(s); if(n>10000&&n<200000){ const d=new Date((n-25569)*86400*1000);d.setHours(0,0,0,0);return d; } }
+  const d=new Date(s); if(!isNaN(d.getTime())){d.setHours(0,0,0,0);return d;}
+  return null;
+}
+
+function hasReunion(row){ return !!parseDate(gc(row,'Reunion Agendada')); }
+function isWeekend(d){ return d.getDay()===0||d.getDay()===6; }
+
+function bizDays(from,to){
+  if(!from||!to)return 0;
+  let c=0; const cur=new Date(from); cur.setHours(0,0,0,0);
+  const end=new Date(to); end.setHours(0,0,0,0);
+  if(cur>=end)return 0;
+  cur.setDate(cur.getDate()+1);
+  while(cur<=end){if(!isWeekend(cur))c++;cur.setDate(cur.getDate()+1);}
+  return c;
+}
+function addBizDays(from,n){ const d=new Date(from);let c=0;while(c<n){d.setDate(d.getDate()+1);if(!isWeekend(d))c++;}return d; }
+function sameDay(a,b){ return a&&b&&a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
+
+function fmtDate(d){
+  const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const months=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return days[d.getDay()]+' '+d.getDate()+' de '+months[d.getMonth()];
+}
+
+function ini(n){ return String(n).split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase(); }
+
+// ─── DATA LOAD ─────────────────────────────────────────────────────────────────
+function loadData(url){
+  url = url || SCRIPT_URL;
+  const cbName = 'cb_'+Date.now();
+  const script = document.createElement('script');
+  const timer = setTimeout(()=>{
+    delete window[cbName];
+    if(script.parentNode)script.parentNode.removeChild(script);
+    showStatus('err','Timeout — verifica el Apps Script y recarga');
+  },15000);
+
+  window[cbName] = (json)=>{
+    clearTimeout(timer);
+    delete window[cbName];
+    if(script.parentNode)script.parentNode.removeChild(script);
+    if(!Array.isArray(json)||json.length===0){ showStatus('err','Sin datos'); return; }
+    data = json;
+    colMap = buildColMap(json[0]);
+    const cols = Object.keys(json[0]);
+    const ci = document.getElementById('colInfo');
+    ci.style.display='block';
+    ci.textContent='📋 '+data.length+' contactos cargados · '+cols.length+' columnas: '+cols.join(' · ');
+    showStatus('ok', data.length+' contactos cargados');
+    renderAll();
+  };
+
+  script.onerror = ()=>{ clearTimeout(timer); delete window[cbName]; showStatus('err','Error al cargar'); };
+  script.src = url+'?callback='+cbName;
+  document.body.appendChild(script);
+  showStatus('loading','Conectando...');
+}
+
+function showStatus(type, msg){
+  // Update config page status
+  const el = document.getElementById('configStatus');
+  if(!el) return;
+  const dot = type==='ok'?'dot-ok':type==='err'?'dot-err':'dot-warn';
+  el.innerHTML = `<span class="dot ${dot}"></span>${msg}`;
+}
+
+function connectScript(){
+  const url = document.getElementById('scriptUrlInput').value.trim();
+  if(!url){ alert('Ingresa la URL del Apps Script'); return; }
+  SCRIPT_URL = url;
+  loadData(url);
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderAll(){
+  renderDay();
+  renderAlerts();
+  if(currentPage==='semana') renderWeek();
+  if(currentPage==='reuniones') renderReuniones();
+}
+
+function renderDay(){
+  document.getElementById('dateLabel').textContent = fmtDate(selectedDate);
+  const acts = getActivitiesForDate(selectedDate);
+  const cnt = acts.length, pct = Math.min(Math.round(cnt/META*100),100);
+  const barColor = pct>=100?'#4ade80':pct>=60?'#6c63ff':'#fbbf24';
+  document.getElementById('goalNums').textContent = cnt+' / '+META+' ('+pct+'%)';
+  document.getElementById('goalBar').style.cssText = `width:${pct}%;background:${barColor}`;
+
+  const msgs=acts.filter(a=>a.type==='msg').length;
+  const calls=acts.filter(a=>a.type==='call').length;
+  const meets=acts.filter(a=>a.type==='meet').length;
+  const statusClass = pct>=100?'metric-ok':pct>=60?'':' metric-warn';
+
+  document.getElementById('dayMetrics').innerHTML = [
+    {label:'Total actividades', value:cnt, sub: pct>=100?'✓ Meta cumplida':'Faltan '+(META-cnt), cls: pct>=100?'metric-ok':cnt>0?'':'metric-bad'},
+    {label:'Mensajes', value:msgs, sub:'enviados'},
+    {label:'Llamadas', value:calls, sub:'realizadas'},
+    {label:'Reuniones', value:meets, sub:'agendadas hoy'},
+  ].map(m=>`<div class="metric-card">
+    <div class="metric-label">${m.label}</div>
+    <div class="metric-value ${m.cls||''}">${m.value}</div>
+    <div class="metric-sub">${m.sub}</div>
+  </div>`).join('');
+
+  const tbody = document.getElementById('dayTable');
+  if(!acts.length){
+    tbody.innerHTML=`<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">📭</div>Sin actividades registradas para este día</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = acts.map(a=>`<tr>
+    <td><strong>${a.empresa}</strong><br><span style="font-size:12px;color:var(--text2)">${a.contacto}</span></td>
+    <td style="color:var(--text2);font-size:12px">${a.cargo}</td>
+    <td><span class="badge ${TYPE_BADGE[a.type]||''}">${TYPE_LABEL[a.type]||a.col}</span></td>
+    <td style="color:var(--text2);font-size:12px;font-family:'DM Mono',monospace">${a.col}</td>
+  </tr>`).join('');
+}
+
+function getActivitiesForDate(date){
+  const acts=[];
+  for(const row of data){
+    for(const col of ACT_COLS){
+      const val=gc(row,col); if(!val) continue;
+      const d=parseDate(val);
+      if(d&&sameDay(d,date)) acts.push({empresa:gc(row,'EMPRESA')||'—',contacto:gc(row,'CONTACTO')||'—',cargo:gc(row,'CARGO')||'—',col,type:COL_TYPE[col]||'msg'});
+    }
+  }
+  return acts;
+}
+
+function countForDate(d){ return getActivitiesForDate(d).length; }
+
+function computeAlerts(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const alerts=[];
+  for(const row of data){
+    if(hasReunion(row)) continue;
+    for(const rule of SEQUENCE_RULES){
+      const fv=gc(row,rule.from), tv=gc(row,rule.to);
+      if(!fv) continue;
+      const fd=parseDate(fv); if(!fd) continue;
+      if(tv&&parseDate(tv)) continue;
+      const elapsed=bizDays(fd,today);
+      const deadline=addBizDays(fd,rule.maxDays);
+      const remaining=bizDays(today,deadline);
+      let urgency=null;
+      if(elapsed>rule.maxDays) urgency='urgent';
+      else if(remaining===0) urgency='warning';
+      if(urgency) alerts.push({empresa:gc(row,'EMPRESA')||'—',contacto:gc(row,'CONTACTO')||'—',cargo:gc(row,'CARGO')||'—',rule,elapsed,remaining,urgency,nextStep:rule.to});
+    }
+  }
+  alerts.sort((a,b)=>a.urgency!==b.urgency?a.urgency==='urgent'?-1:1:b.elapsed-a.elapsed);
+  return alerts;
+}
+
+function renderAlerts(){
+  const all = computeAlerts();
+  const urgent=all.filter(a=>a.urgency==='urgent');
+  const warn=all.filter(a=>a.urgency==='warning');
+  document.getElementById('urgentCount').textContent = urgent.length+' vencidos';
+  document.getElementById('warnCount').textContent = warn.length+' vencen hoy';
+  const badge = document.getElementById('navBadge');
+  if(all.length>0){ badge.style.display='inline'; badge.textContent=all.length; }
+  else { badge.style.display='none'; }
+
+  const filtered = alertFilter==='urgent'?urgent:alertFilter==='warning'?warn:all;
+  const el = document.getElementById('alertList');
+  if(!filtered.length){ el.innerHTML='<div class="empty-state"><div class="empty-icon">✅</div>Sin alertas pendientes — ¡todo al día!</div>'; return; }
+  el.innerHTML = filtered.map(a=>{
+    const isU=a.urgency==='urgent';
+    const nextLabel=COL_TYPE[a.nextStep]==='call'?'Llamada':COL_TYPE[a.nextStep]==='meet'?'Reunión':'Mensaje';
+    const tag = isU
+      ? `<span class="alert-tag tag-urgent">+${a.elapsed-a.rule.maxDays}d vencido</span>`
+      : `<span class="alert-tag tag-warn">Vence hoy</span>`;
+    return `<div class="alert-item">
+      <span class="alert-icon">${isU?'🔴':'🟡'}</span>
+      <div class="alert-body">
+        <div class="alert-title">${a.empresa} — ${a.contacto}</div>
+        <div class="alert-sub">${a.cargo} · <strong>${a.rule.label}</strong> · Siguiente paso: ${nextLabel}</div>
+      </div>${tag}</div>`;
+  }).join('');
+}
+
+function setAlertFilter(f,el){
+  alertFilter=f;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderAlerts();
+}
+
+function renderWeek(){
+  const days=[];
+  for(let i=6;i>=0;i--){ const d=new Date(selectedDate);d.setDate(d.getDate()-i);d.setHours(0,0,0,0);days.push(d); }
+  const labels=days.map(d=>['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()]+' '+d.getDate());
+  const counts=days.map(d=>countForDate(d));
+  const total=counts.reduce((s,c)=>s+c,0), avg=Math.round(total/7), best=Math.max(...counts,0), metaDays=counts.filter(c=>c>=META).length;
+
+  document.getElementById('weekMetrics').innerHTML=[
+    {label:'Total semana',value:total,sub:'actividades'},
+    {label:'Promedio diario',value:avg,sub:'meta: '+META,cls:avg>=META?'metric-ok':avg>0?'':'metric-bad'},
+    {label:'Mejor día',value:best,sub:'actividades'},
+    {label:'Días en meta',value:metaDays+'/7',sub:'días cumplidos',cls:metaDays>=5?'metric-ok':metaDays>=3?'':'metric-warn'},
+  ].map(m=>`<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls||''}">${m.value}</div><div class="metric-sub">${m.sub}</div></div>`).join('');
+
+  const ctx=document.getElementById('weekChart');
+  if(weekChart)weekChart.destroy();
+  weekChart=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Actividades',data:counts,backgroundColor:counts.map(c=>c>=META?'rgba(74,222,128,0.7)':'rgba(108,99,255,0.6)'),borderRadius:6,borderSkipped:false},
+      {label:'Meta',data:Array(7).fill(META),type:'line',borderColor:'rgba(251,191,36,0.7)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1f1f25',borderColor:'#2a2a32',borderWidth:1,titleColor:'#f0f0f4',bodyColor:'#8888a0'}},
+      scales:{
+        x:{grid:{display:false,color:'rgba(255,255,255,0.05)'},ticks:{color:'#8888a0',font:{size:12,family:'DM Sans'}}},
+        y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#8888a0',font:{size:12,family:'DM Mono'}},min:0}
+      }
+    }
+  });
+}
+
+function renderReuniones(){
+  const list=data.filter(r=>hasReunion(r));
+  document.getElementById('reunionSub').textContent=list.length+' reunión'+(list.length!==1?'es':'')+' agendada'+(list.length!==1?'s':'');
+  const el=document.getElementById('reunionList');
+  if(!list.length){ el.innerHTML='<div class="empty-state"><div class="empty-icon">📅</div>No hay reuniones agendadas aún</div>'; return; }
+  el.innerHTML=list.map(r=>{
+    const contacto=gc(r,'CONTACTO')||'—', empresa=gc(r,'EMPRESA')||'—', cargo=gc(r,'CARGO')||'—';
+    const d=parseDate(gc(r,'Reunion Agendada'));
+    return `<div class="reunion-item">
+      <div class="avatar">${ini(contacto)}</div>
+      <div class="reunion-info">
+        <div class="reunion-name">${contacto} <span style="color:var(--text2);font-weight:400">— ${empresa}</span></div>
+        <div class="reunion-detail">${cargo}</div>
+      </div>
+      <span class="badge badge-meet" style="flex-shrink:0">${d?fmtDate(d):'Fecha por confirmar'}</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+function showPage(name, navEl){
+  currentPage = name;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
+  if(navEl) navEl.classList.add('active');
+  if(name==='semana') renderWeek();
+  if(name==='reuniones') renderReuniones();
+  if(name==='alertas') renderAlerts();
+  if(name==='config') document.getElementById('scriptUrlInput').value = SCRIPT_URL;
+}
+
+function changeDay(n){ selectedDate.setDate(selectedDate.getDate()+n); renderDay(); }
+function goToday(){ selectedDate=new Date(); selectedDate.setHours(0,0,0,0); renderDay(); }
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.getElementById('dateLabel').textContent = fmtDate(selectedDate);
+document.getElementById('dayMetrics').innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0;">Conecta tu Google Sheet para ver datos reales.</div>';
+loadData();
+</script>
+</body>
+</html>
